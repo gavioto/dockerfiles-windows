@@ -36,6 +36,29 @@ This one is easy.
 wget -Uri $url -OutFile $localfile
 ```
 
+## Downloading a file (wget, curl)
+`Invoke-WebRequest` works for both windowsservercore and nanoserver. 
+
+```powershell
+$ProgressPreference = 'SilentlyContinue'
+Invoke-WebRequest $url -OutFile $target -UseBasicParsing 
+```
+
+The  `$ProgressPreference` setting is to fix download speed as sometimes downloading with `Invoke-WebRequest` was poorly slow.
+ 
+Only for windowsservercore, you can also use
+
+```powershell
+$wc = New-Object net.webclient; $wc.Downloadfile($url, $target)
+```
+### TLS 1.2
+
+Some web sites enforce you to use TLS 1.2. You have to enable TLS 1.2 in PowerShell before the `Invoke-WebRequest` or WebClient call.
+
+```powershell
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;
+```
+
 ## `curl -u`
 
 To download a file with BasicAuth use this
@@ -51,6 +74,7 @@ $WebClient.DownloadFile( $url, $localfile )
 To extract a ZIP file use this
 
 ```powershell
+$ProgressPreference = 'SilentlyContinue'
 Expand-Archive -Path $zip -DestinationPath $dest -Force
 ```
 
@@ -88,6 +112,43 @@ List files sorted by date, newest files at the end
 ls | sort LastWriteTime
 ```
 
+## `wc -l`
+
+Count the lines of stdin, like in `ls | wc -l`
+
+```powershell
+ls | measure
+```
+
+## time another command
+
+To measure the time that a command takes, use
+
+```powershell
+Measure-Command {docker run microsoft/nanoserver hostname}
+```
+
+## time the stdout of another command
+
+To prepend the timestamp for each stdout line of another command use this
+
+```powershell
+filter timestamp {"$(Get-Date -Format o): $_"}
+dir | timestamp
+docker-compose up -d 2>&1 | timestamp
+```
+
+## elapsed time of another command for each line of stdout
+
+To prepend the time elapsed time to each line of stdout ue this
+
+```powershell
+filter addtime {"$((new-timespan -start $start -end (Get-Date)).TotalSeconds): $_"}
+$start=(Get-Date) ; dir | addtime
+$start=(Get-Date) ; docker-compose up -d 2>&1 | addtime
+```
+
+
 ## Docker commands
 
 ### Delete all containers
@@ -99,6 +160,14 @@ docker rm -vf $(docker ps -qa)
 ```
 
 Surprise!
+
+## Get Windows version
+
+```powershell
+PS C:\Users\vagrant> $(gp "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion").BuildLabEx
+14393.447.amd64fre.rs1_release_inmarket.161102-0100
+PS C:\Users\vagrant> winver
+```
 
 ## Links
 

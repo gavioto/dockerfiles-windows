@@ -1,21 +1,15 @@
-FROM windowsservercore
+FROM golang:1.9-nanoserver
 
-ENV GO_VERSION 1.6
-ENV GIT_VERSION 2.7.0
+SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
 
-RUN mkdir \go\bin \go\src
-WORKDIR /go
-ENV GOPATH C:/go
-RUN setx PATH %PATH%;C:\git\cmd;C:\git\bin;C:\git\usr\bin;C:\tools\go\bin;C:\go\bin
+ENV GIT_VERSION 2.14.2
+ENV GIT_DOWNLOAD_URL https://github.com/git-for-windows/git/releases/download/v${GIT_VERSION}.windows.1/MinGit-${GIT_VERSION}-64-bit.zip
+ENV GIT_SHA256 9638733b8d749c43d59c34a714d582b2352356ee7d13c4acf919c18f307387f5
 
-RUN powershell -Command \
-    Sleep 2 ; \
-    wget https://github.com/git-for-windows/git/releases/download/v%GIT_VERSION%.windows.1/Git-%GIT_VERSION%-64-bit.exe -outfile gitinstaller.exe ; \
-    Start-Process .\gitinstaller.exe -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /CLOSEAPPLICATIONS /DIR=c:\git' -Wait ; \
-    rm .\gitinstaller.exe
-
-RUN powershell -Command \
-    Sleep 2 ; \
-    wget https://storage.googleapis.com/golang/go%GO_VERSION%.windows-amd64.msi -outfile go.msi ; \
-    Start-Process .\go.msi -ArgumentList '/quiet' -Wait ; \
-    rm .\go.msi
+RUN Invoke-WebRequest -UseBasicParsing $env:GIT_DOWNLOAD_URL -OutFile git.zip; \
+    if ((Get-FileHash git.zip -Algorithm sha256).Hash -ne $env:GIT_SHA256) {exit 1} ; \
+    Expand-Archive git.zip -DestinationPath C:\git; \
+    Remove-Item git.zip; \
+    Write-Host 'Updating PATH ...'; \
+    $env:PATH = 'C:\git\cmd;C:\git\mingw64\bin;C:\git\usr\bin;' + $env:PATH; \
+    Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Environment\' -Name Path -Value $env:PATH

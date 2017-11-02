@@ -6,8 +6,16 @@ if not exist binary (
   mkdir binary
 )
 set BINDIR=%cd%
+set image=docker
 pushd docker
-docker build -t docker -f Dockerfile.windows .
-docker run --rm -v "%BINDIR%:c:\target" docker sh -c 'cd /c/go/src/github.com/docker/docker; hack/make.sh binary; ec=$?; if [ $ec -eq 0 ]; then robocopy /c/go/src/github.com/docker/docker/bundles/$(cat VERSION)/binary /c/target/binary; fi; exit $ec'
+if not "%1x"=="x" (
+  git fetch origin pull/%1/head:pr%1
+  git checkout pr%1
+  set image=dockerpr%1
+)
+docker build -t %image% -f Dockerfile.windows .
+docker run --name %image% %image% hack\make.ps1 -Binary
+docker cp %image%:C:\go\src\github.com\docker\docker\bundles\docker.exe ..\binary\docker.exe
+docker cp %image%:C:\go\src\github.com\docker\docker\bundles\dockerd.exe ..\binary\dockerd.exe
 popd
 dir binary
